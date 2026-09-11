@@ -22,9 +22,10 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H0 — Geospatial fundamentals + the smoke tile.** See [`PLAN.md`](PLAN.md)
-section 6 for what "done" looks like for this phase, and section 7 for the overall
-MVP → v1 → stretch schedule.
+**Phase H0 done** — real Sentinel-2 over Dhaka, NDVI/NDWI/NDBI, both raster↔vector
+directions, real per-district zonal stats. See [`RESULTS.md`](RESULTS.md) for the
+numbers and [`PLAN.md`](PLAN.md) section 6 for what's next (H1 — cloud data access as
+a reusable function) and section 7 for the overall MVP → v1 → stretch schedule.
 
 ## Repo layout
 
