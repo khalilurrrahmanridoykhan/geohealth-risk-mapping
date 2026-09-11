@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# mypy / type checkers
+.mypy_cache/
+
+# OS cruft
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# Project-specific: downloaded satellite scenes, derived rasters/vectors, and
+# trained model weights are all reproducible from scripts/notebooks -- never
+# committed. See README.md for how to regenerate everything under data/.
+# ---------------------------------------------------------------------------
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+runs/
+*.pt
+*.pth
+*.onnx
+*.tif
+*.tiff
+.cache/
+
+# Earth Engine / Planetary Computer credentials, if ever used locally
+.config/earthengine/
