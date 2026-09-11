@@ -1,22 +1,30 @@
 # Phase H0 dependencies only -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
-# once actually installed and verified, not guessed.
+# to what was actually installed and verified (Phase H0 notebook executed
+# for real against live Sentinel-2 data, full test suite green) -- not
+# guessed.
 
 # Rasters / vectors / geospatial fundamentals
-rasterio
-rioxarray
-xarray
-geopandas
-shapely
-rasterstats
+rasterio==1.5.1
+rioxarray==0.23.0
+xarray==2026.7.0
+geopandas==1.1.4
+shapely==2.1.2
+rasterstats==0.21.0
+pandas==2.3.3
 
 # Cloud data access (STAC, no account needed)
-pystac-client
-planetary-computer
-stackstac
+pystac-client==0.9.0
+planetary-computer==1.0.0
+stackstac==0.5.1
 
 # Viz
-matplotlib
+matplotlib==3.11.1
+
+# Notebooks
+jupyter==1.1.1
+nbconvert==7.17.1
+ipykernel==7.3.0
 
 # Tests
-pytest
+pytest==9.1.1
