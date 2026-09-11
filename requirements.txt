@@ -1,0 +1,22 @@
+# Phase H0 dependencies only -- more are added as later phases need them
+# (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
+# once actually installed and verified, not guessed.
+
+# Rasters / vectors / geospatial fundamentals
+rasterio
+rioxarray
+xarray
+geopandas
+shapely
+rasterstats
+
+# Cloud data access (STAC, no account needed)
+pystac-client
+planetary-computer
+stackstac
+
+# Viz
+matplotlib
+
+# Tests
+pytest
