@@ -33,6 +33,20 @@ def scl_cloud_mask(scl: np.ndarray) -> np.ndarray:
     return np.isin(scl, list(SENTINEL2_CLEAR_SCL_CLASSES))
 
 
+def always_cloudy_fraction(scl_stack: np.ndarray) -> float:
+    """Fraction of pixels that have zero clear observations across the
+    whole time stack -- i.e. the fraction of the composite that
+    composite_cloud_masked() had to fall back to a cloud-contaminated plain
+    median for. Real value found during Dhaka monsoon-season testing: ~0.49
+    even with 46 scenes across 4 months -- some AOI/seasons have so few
+    clear passes that no amount of compositing over the STAC search window
+    fully removes cloud contamination. High fallback fraction is a reason to
+    widen the date range, add more scenes, or switch to Sentinel-1 (H5) --
+    not something to silently paper over."""
+    keep = scl_cloud_mask(scl_stack)
+    return float(np.all(~keep, axis=0).mean())
+
+
 def composite_cloud_masked(band_stack: np.ndarray, scl_stack: np.ndarray) -> np.ndarray:
     """Per-pixel median across the time axis (axis 0), using only
     observations SCL marks as clear. A pixel that's cloudy in every single
@@ -79,14 +93,27 @@ def get_imagery(
 
     aoi: (min_lon, min_lat, max_lon, max_lat).
     date_range: STAC-style 'YYYY-MM-DD/YYYY-MM-DD'.
-    sensor: 'sentinel-2' (cloud-masked optical composite) or 'sentinel-1'
-        (SAR amplitude composite, no cloud masking needed -- SAR sees
-        through cloud, which is the whole reason H5 uses it for flood
-        mapping).
+    sensor: 'sentinel-2' (cloud-masked optical composite). 'sentinel-1' is
+        recognized but raises NotImplementedError -- deferred to Phase H5,
+        which needs GCP-aware raster reading this function doesn't have.
     source: 'planetary_computer' (default, free, no account, verified
         against live data) or 'earth_engine' (real GEE API calls, but
         requires a one-time `earthengine authenticate` login).
     """
+    # Validated before any network call, so an invalid sensor/source fails
+    # fast and offline -- exercised directly by tests/test_imagery.py without
+    # needing real network access.
+    if sensor == "sentinel-1":
+        raise NotImplementedError(
+            "sensor='sentinel-1' needs GCP-aware raster reading that stackstac's "
+            "plain .stack() doesn't provide (Planetary Computer's sentinel-1-grd "
+            "assets carry GCPs in EPSG:4326 instead of a direct affine CRS -- "
+            "confirmed by opening one directly, not assumed). Deferred to Phase "
+            "H5 (SAR flood mapping), which implements this properly."
+        )
+    if sensor != "sentinel-2":
+        raise ValueError(f"unknown sensor {sensor!r}, expected 'sentinel-2' (sentinel-1 deferred to H5)")
+
     if source == "planetary_computer":
         return _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes)
     if source == "earth_engine":
@@ -95,6 +122,8 @@ def get_imagery(
 
 
 def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes):
+    # sensor is always 'sentinel-2' here -- get_imagery() validates it before
+    # dispatching to this backend.
     import planetary_computer
     import pystac_client
     import rioxarray  # noqa: F401 -- registers the .rio accessor
@@ -105,68 +134,49 @@ def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, re
         modifier=planetary_computer.sign_inplace,
     )
 
-    if sensor == "sentinel-2":
-        search = catalog.search(
-            collections=["sentinel-2-l2a"],
-            bbox=aoi,
-            datetime=date_range,
-            query={"eo:cloud_cover": {"lt": cloud_cover_max}},
+    search = catalog.search(
+        collections=["sentinel-2-l2a"],
+        bbox=aoi,
+        datetime=date_range,
+        query={"eo:cloud_cover": {"lt": cloud_cover_max}},
+    )
+    items = sorted(search.items(), key=lambda i: i.properties["eo:cloud_cover"])[:max_scenes]
+    if not items:
+        raise RuntimeError(
+            f"no sentinel-2 scenes under {cloud_cover_max}% cloud cover found for "
+            f"aoi={aoi}, date_range={date_range!r}"
         )
-        items = sorted(search.items(), key=lambda i: i.properties["eo:cloud_cover"])[:max_scenes]
-        if not items:
-            raise RuntimeError(
-                f"no sentinel-2 scenes under {cloud_cover_max}% cloud cover found for "
-                f"aoi={aoi}, date_range={date_range!r}"
-            )
-        epsg = utm_epsg_from_sentinel2_id(items[0].id)
-        stack = stackstac.stack(
-            items,
-            assets=["B03", "B04", "B08", "B11", "SCL"],
-            bounds_latlon=list(aoi),
-            resolution=resolution,
-            epsg=epsg,
-        )
-        arr = stack.compute()
-        bands = arr.sel(band=["B03", "B04", "B08", "B11"]).values  # (time, band, y, x)
-        scl = arr.sel(band="SCL").values  # (time, y, x)
-        scl_per_band = np.broadcast_to(scl[:, None, :, :], bands.shape)
-        composite = composite_cloud_masked(bands, scl_per_band)  # (band, y, x)
+    epsg = utm_epsg_from_sentinel2_id(items[0].id)
+    stack = stackstac.stack(
+        items,
+        assets=["B03", "B04", "B08", "B11", "SCL"],
+        bounds_latlon=list(aoi),
+        resolution=resolution,
+        epsg=epsg,
+    )
+    arr = stack.compute()
+    bands = arr.sel(band=["B03", "B04", "B08", "B11"]).values  # (time, band, y, x)
+    scl = arr.sel(band="SCL").values  # (time, y, x)
+    scl_per_band = np.broadcast_to(scl[:, None, :, :], bands.shape)
+    composite = composite_cloud_masked(bands, scl_per_band)  # (band, y, x)
 
-        meta = {
-            "sensor": sensor,
-            "source": "planetary_computer",
-            "date_range": date_range,
-            "n_scenes_used": len(items),
-            "item_ids": [i.id for i in items],
-            "cloud_cover_pct": [round(i.properties["eo:cloud_cover"], 2) for i in items],
-            "epsg": epsg,
-            "bands": ["B03_green", "B04_red", "B08_nir", "B11_swir"],
-        }
-        composite_da = stack.sel(band=["B03", "B04", "B08", "B11"]).isel(time=0).copy(data=composite)
-        return composite_da, meta
-
-    if sensor == "sentinel-1":
-        search = catalog.search(collections=["sentinel-1-grd"], bbox=aoi, datetime=date_range)
-        items = list(search.items())[:max_scenes]
-        if not items:
-            raise RuntimeError(f"no sentinel-1 scenes found for aoi={aoi}, date_range={date_range!r}")
-        epsg = 32646  # Bangladesh; Sentinel-1 GRD items don't encode an MGRS tile id
-        stack = stackstac.stack(items, assets=["vv", "vh"], bounds_latlon=list(aoi), resolution=resolution, epsg=epsg)
-        arr = stack.compute()
-        composite = np.nanmedian(arr.values, axis=0)  # SAR: no cloud to mask, just a median composite
-        meta = {
-            "sensor": sensor,
-            "source": "planetary_computer",
-            "date_range": date_range,
-            "n_scenes_used": len(items),
-            "item_ids": [i.id for i in items],
-            "epsg": epsg,
-            "bands": ["vv", "vh"],
-        }
-        composite_da = stack.isel(time=0).copy(data=composite)
-        return composite_da, meta
-
-    raise ValueError(f"unknown sensor {sensor!r}, expected 'sentinel-2' or 'sentinel-1'")
+    meta = {
+        "sensor": sensor,
+        "source": "planetary_computer",
+        "date_range": date_range,
+        "n_scenes_used": len(items),
+        "item_ids": [i.id for i in items],
+        "cloud_cover_pct": [round(i.properties["eo:cloud_cover"], 2) for i in items],
+        "epsg": epsg,
+        "bands": ["B03_green", "B04_red", "B08_nir", "B11_swir"],
+        # Fraction of pixels with zero clear observation across every scene
+        # used -- these fell back to a cloud-contaminated plain median. High
+        # values mean this composite is NOT reliable; widen date_range, raise
+        # max_scenes, or use Sentinel-1 (H5) instead. Not swept under the rug.
+        "always_cloudy_fraction": always_cloudy_fraction(scl),
+    }
+    composite_da = stack.sel(band=["B03", "B04", "B08", "B11"]).isel(time=0).copy(data=composite)
+    return composite_da, meta
 
 
 def _get_imagery_earth_engine(aoi, date_range, sensor, cloud_cover_max, resolution):

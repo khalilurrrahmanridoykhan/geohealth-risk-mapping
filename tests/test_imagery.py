@@ -1,6 +1,13 @@
 import numpy as np
+import pytest
 
-from src.imagery import composite_cloud_masked, scl_cloud_mask, utm_epsg_from_sentinel2_id
+from src.imagery import (
+    always_cloudy_fraction,
+    composite_cloud_masked,
+    get_imagery,
+    scl_cloud_mask,
+    utm_epsg_from_sentinel2_id,
+)
 
 
 def test_scl_cloud_mask_keeps_clear_land_water_snow_classes():
@@ -41,6 +48,16 @@ def test_composite_handles_a_mix_of_always_clear_and_always_cloudy_pixels():
     assert result[0, 1] == 60.0  # fallback plain median
 
 
+def test_always_cloudy_fraction_is_zero_when_every_pixel_has_a_clear_look():
+    scl_stack = np.array([[[4, 6]], [[9, 9]], [[4, 6]]])  # left always clear, right cloudy once
+    assert always_cloudy_fraction(scl_stack) == 0.0
+
+
+def test_always_cloudy_fraction_counts_pixels_with_zero_clear_observations():
+    scl_stack = np.array([[[4, 9]], [[4, 9]], [[4, 9]]])  # left always clear, right always cloudy
+    assert always_cloudy_fraction(scl_stack) == 0.5
+
+
 def test_utm_epsg_from_sentinel2_id_parses_the_mgrs_zone():
     assert utm_epsg_from_sentinel2_id("S2C_MSIL2A_20260214T042901_R133_T46QBM_20260214T080510") == 32646
 
@@ -50,7 +67,19 @@ def test_utm_epsg_from_sentinel2_id_handles_a_different_zone():
 
 
 def test_utm_epsg_from_sentinel2_id_raises_on_an_unrecognized_id():
-    import pytest
-
     with pytest.raises(ValueError):
         utm_epsg_from_sentinel2_id("not-a-real-sentinel-2-id")
+
+
+def test_get_imagery_rejects_an_unknown_source():
+    with pytest.raises(ValueError):
+        get_imagery((90.0, 23.0, 90.1, 23.1), "2026-01-01/2026-01-31", source="not_a_real_source")
+
+
+def test_get_imagery_sentinel1_is_deliberately_not_implemented():
+    # Real investigation (opening a raw sentinel-1-grd asset with rasterio)
+    # showed Planetary Computer serves these with GCPs instead of a direct
+    # affine CRS -- deferred to Phase H5, which needs GCP-aware reading this
+    # function doesn't have, rather than half-implementing it here.
+    with pytest.raises(NotImplementedError):
+        get_imagery((90.0, 23.0, 90.1, 23.1), "2026-01-01/2026-01-31", sensor="sentinel-1")
