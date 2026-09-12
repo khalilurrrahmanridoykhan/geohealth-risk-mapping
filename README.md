@@ -22,13 +22,17 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H4 done** — H3's real trained U-Net run over the full AOI, then turned into the
-artifact later phases actually need: one real per-district predictor table plus one real
-GeoPackage (vectorized, cleaned water/built-up polygons), produced by a single,
-reproducible function call (`src/pipeline.build_predictor_table`). Reproducibility was
-checked, not assumed — running the same command twice on the same inputs produces an
-identical table. See [`RESULTS.md`](RESULTS.md) for the numbers and
-[`PLAN.md`](PLAN.md) section 6 for what's next (H5 — SAR flood mapping with Sentinel-1).
+**Phase H5 done** — real SAR flood mapping for a real event: the 2026 Bangladesh monsoon
+flood in Dirai, Sunamganj (a record 402mm of rain in 24 hours, part of flooding that hit
+10 districts and over 1.11 million people). A real Sentinel-1 before/during pair, real
+OpenStreetMap health facilities, and a real WorldPop population raster combine into one
+flood-extent map and one affected-population/facilities table. This phase also solved a
+real technical blocker H1 had deferred (Sentinel-1 support) — the fix was discovering the
+right data product (`sentinel-1-rtc`) rather than building complex GCP-aware reading by
+hand — and caught three more real bugs along the way (documented in the notebook and
+commit history, not swept under the rug). See [`RESULTS.md`](RESULTS.md) for the numbers
+and [`PLAN.md`](PLAN.md) section 6 for what's next (H6 — drone imagery + YOLO
+breeding-site detection).
 
 ## Repo layout
 
