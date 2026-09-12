@@ -76,10 +76,11 @@ def test_get_imagery_rejects_an_unknown_source():
         get_imagery((90.0, 23.0, 90.1, 23.1), "2026-01-01/2026-01-31", source="not_a_real_source")
 
 
-def test_get_imagery_sentinel1_is_deliberately_not_implemented():
-    # Real investigation (opening a raw sentinel-1-grd asset with rasterio)
-    # showed Planetary Computer serves these with GCPs instead of a direct
-    # affine CRS -- deferred to Phase H5, which needs GCP-aware reading this
-    # function doesn't have, rather than half-implementing it here.
-    with pytest.raises(NotImplementedError):
-        get_imagery((90.0, 23.0, 90.1, 23.1), "2026-01-01/2026-01-31", sensor="sentinel-1")
+def test_get_imagery_rejects_an_unknown_sensor():
+    # sensor='sentinel-1' is a real, implemented path as of Phase H5 (uses
+    # the sentinel-1-rtc collection -- see _get_sentinel1_composite's
+    # docstring) -- exercised for real, network-required, in
+    # notebooks/06_sar_flood_mapping.ipynb, not here. This test only checks
+    # the fast, offline validation.
+    with pytest.raises(ValueError):
+        get_imagery((90.0, 23.0, 90.1, 23.1), "2026-01-01/2026-01-31", sensor="not_a_real_sensor")

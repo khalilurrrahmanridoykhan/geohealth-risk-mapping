@@ -1,15 +1,25 @@
-"""Phase H1 -- a reusable get_imagery(aoi, date_range, sensor) that returns an
-analysis-ready, cloud-masked composite from either Microsoft Planetary
-Computer (free, no account -- the default and the only backend actually
-verified against live data in this repo so far) or Google Earth Engine (real
-API calls, but requires a one-time interactive `earthengine authenticate`
-login this environment cannot perform -- see the H1 notebook for what
-happens when it isn't set up).
+"""Phase H1 (Sentinel-2) + Phase H5 (Sentinel-1) -- a reusable
+get_imagery(aoi, date_range, sensor) that returns an analysis-ready
+composite from either Microsoft Planetary Computer (free, no account --
+the default and the only backend actually verified against live data in
+this repo so far) or Google Earth Engine (real API calls, but requires a
+one-time interactive `earthengine authenticate` login this environment
+cannot perform -- see the H1 notebook for what happens when it isn't set
+up).
+
+sensor='sentinel-1' uses the 'sentinel-1-rtc' collection, not
+'sentinel-1-grd' -- H1 originally deferred Sentinel-1 support after finding
+sentinel-1-grd assets carry GCPs instead of a direct affine CRS, which
+stackstac's plain .stack() can't warp. sentinel-1-rtc is a different,
+already terrain-corrected and calibrated product with a real CRS, so H5's
+real fix was picking the right data product, not building GCP-aware
+reading by hand -- see _get_sentinel1_composite()'s docstring.
 
 The cloud-masking math (`scl_cloud_mask`, `composite_cloud_masked`) is pure
 numpy and unit-tested with synthetic arrays in tests/test_imagery.py. The
 STAC search / stackstac loading is I/O and is instead verified by actually
-running notebooks/02_cloud_data_access.ipynb against live data.
+running notebooks/02_cloud_data_access.ipynb and
+notebooks/06_sar_flood_mapping.ipynb against live data.
 """
 
 from __future__ import annotations
@@ -41,8 +51,9 @@ def always_cloudy_fraction(scl_stack: np.ndarray) -> float:
     even with 46 scenes across 4 months -- some AOI/seasons have so few
     clear passes that no amount of compositing over the STAC search window
     fully removes cloud contamination. High fallback fraction is a reason to
-    widen the date range, add more scenes, or switch to Sentinel-1 (H5) --
-    not something to silently paper over."""
+    widen the date range, add more scenes, or switch to Sentinel-1
+    (sensor='sentinel-1', which sees through cloud entirely) -- not
+    something to silently paper over."""
     keep = scl_cloud_mask(scl_stack)
     return float(np.all(~keep, axis=0).mean())
 
@@ -93,9 +104,10 @@ def get_imagery(
 
     aoi: (min_lon, min_lat, max_lon, max_lat).
     date_range: STAC-style 'YYYY-MM-DD/YYYY-MM-DD'.
-    sensor: 'sentinel-2' (cloud-masked optical composite). 'sentinel-1' is
-        recognized but raises NotImplementedError -- deferred to Phase H5,
-        which needs GCP-aware raster reading this function doesn't have.
+    sensor: 'sentinel-2' (cloud-masked optical composite) or 'sentinel-1'
+        (SAR backscatter composite -- median VV/VH, no cloud masking needed;
+        uses the 'sentinel-1-rtc' collection specifically, not the raw
+        'sentinel-1-grd' -- see the module docstring for why).
     source: 'planetary_computer' (default, free, no account, verified
         against live data) or 'earth_engine' (real GEE API calls, but
         requires a one-time `earthengine authenticate` login).
@@ -103,16 +115,8 @@ def get_imagery(
     # Validated before any network call, so an invalid sensor/source fails
     # fast and offline -- exercised directly by tests/test_imagery.py without
     # needing real network access.
-    if sensor == "sentinel-1":
-        raise NotImplementedError(
-            "sensor='sentinel-1' needs GCP-aware raster reading that stackstac's "
-            "plain .stack() doesn't provide (Planetary Computer's sentinel-1-grd "
-            "assets carry GCPs in EPSG:4326 instead of a direct affine CRS -- "
-            "confirmed by opening one directly, not assumed). Deferred to Phase "
-            "H5 (SAR flood mapping), which implements this properly."
-        )
-    if sensor != "sentinel-2":
-        raise ValueError(f"unknown sensor {sensor!r}, expected 'sentinel-2' (sentinel-1 deferred to H5)")
+    if sensor not in ("sentinel-1", "sentinel-2"):
+        raise ValueError(f"unknown sensor {sensor!r}, expected 'sentinel-1' or 'sentinel-2'")
 
     if source == "planetary_computer":
         return _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes)
@@ -122,8 +126,6 @@ def get_imagery(
 
 
 def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes):
-    # sensor is always 'sentinel-2' here -- get_imagery() validates it before
-    # dispatching to this backend.
     import planetary_computer
     import pystac_client
     import rioxarray  # noqa: F401 -- registers the .rio accessor
@@ -133,6 +135,9 @@ def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, re
         "https://planetarycomputer.microsoft.com/api/stac/v1",
         modifier=planetary_computer.sign_inplace,
     )
+
+    if sensor == "sentinel-1":
+        return _get_sentinel1_composite(aoi, date_range, resolution, max_scenes, catalog)
 
     search = catalog.search(
         collections=["sentinel-2-l2a"],
@@ -176,6 +181,95 @@ def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, re
         "always_cloudy_fraction": always_cloudy_fraction(scl),
     }
     composite_da = stack.sel(band=["B03", "B04", "B08", "B11"]).isel(time=0).copy(data=composite)
+    return composite_da, meta
+
+
+def _get_sentinel1_composite(aoi, date_range, resolution, max_scenes, catalog):
+    """Uses 'sentinel-1-rtc' (Radiometrically Terrain Corrected), NOT the
+    raw 'sentinel-1-grd' collection H1 originally tried and deferred.
+    Investigated directly (not assumed): sentinel-1-grd assets on Planetary
+    Computer carry ground control points in EPSG:4326 instead of a direct
+    affine CRS (rasterio.open(href).crs is None), which stackstac's plain
+    .stack() can't warp. sentinel-1-rtc is a different, already-processed
+    product -- real CRS (EPSG:32646 confirmed by opening one directly),
+    real affine transform, real nodata, calibrated linear-power gamma0
+    backscatter.
+
+    Reads directly with rasterio instead of stackstac, for a second real,
+    measured reason: these RTC assets are ~1.9GB float32 GeoTIFFs (vs. a
+    typical Sentinel-2 band's much smaller uint16 COG), and stackstac's
+    WarpedVRT-based read of one band over a real AOI either timed out
+    entirely or took several minutes in testing. A plain windowed,
+    decimated rasterio read using the COG's own overview levels was
+    consistently faster (by roughly an order of magnitude at a several-x
+    decimation factor) -- these files are already in their final target
+    CRS, so no reprojection is needed at all, and stackstac's
+    general-purpose warping path was paying a real, avoidable cost for
+    machinery this data doesn't need. Even so, expect real reads over a
+    district-sized AOI to take on the order of a minute or more per band --
+    these are still large files.
+    """
+    import rasterio
+    from affine import Affine
+    from pyproj import Transformer
+    from rasterio.enums import Resampling
+    from rasterio.windows import from_bounds
+
+    search = catalog.search(collections=["sentinel-1-rtc"], bbox=aoi, datetime=date_range)
+    items = list(search.items())[:max_scenes]
+    if not items:
+        raise RuntimeError(f"no sentinel-1-rtc scenes found for aoi={aoi}, date_range={date_range!r}")
+
+    epsg = int(items[0].properties["proj:code"].split(":")[1])
+    transformer = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
+    minx, miny = transformer.transform(aoi[0], aoi[1])
+    maxx, maxy = transformer.transform(aoi[2], aoi[3])
+
+    band_arrays: dict[str, list[np.ndarray]] = {"vv": [], "vh": []}
+    out_shape = None
+    out_transform = None
+    for item in items:
+        for band in ("vv", "vh"):
+            with rasterio.open(item.assets[band].href) as src:
+                window = from_bounds(minx, miny, maxx, maxy, transform=src.transform)
+                if out_shape is None:
+                    native_res = src.transform.a
+                    out_shape = (
+                        max(1, int(window.height * native_res / resolution)),
+                        max(1, int(window.width * native_res / resolution)),
+                    )
+                    out_transform = src.window_transform(window) * Affine.scale(
+                        window.width / out_shape[1], window.height / out_shape[0]
+                    )
+                data = src.read(
+                    1, window=window, out_shape=out_shape, resampling=Resampling.average,
+                    boundless=True, fill_value=src.nodata if src.nodata is not None else np.nan,
+                ).astype("float32")
+                if src.nodata is not None:
+                    data = np.where(data == src.nodata, np.nan, data)
+                band_arrays[band].append(data)
+
+    composite = np.stack([
+        np.nanmedian(np.stack(band_arrays["vv"]), axis=0),
+        np.nanmedian(np.stack(band_arrays["vh"]), axis=0),
+    ])
+
+    meta = {
+        "sensor": "sentinel-1",
+        "source": "planetary_computer",
+        "date_range": date_range,
+        "n_scenes_used": len(items),
+        "item_ids": [i.id for i in items],
+        "epsg": epsg,
+        "bands": ["vv", "vh"],
+        "product": "sentinel-1-rtc",
+        "units": "linear power (gamma0), not dB -- convert with 10*log10(x) for display",
+    }
+
+    import xarray as xr
+
+    composite_da = xr.DataArray(composite, dims=("band", "y", "x"), coords={"band": ["vv", "vh"]})
+    composite_da = composite_da.rio.write_crs(epsg).rio.write_transform(out_transform)
     return composite_da, meta
 
 
