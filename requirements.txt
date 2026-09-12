@@ -1,8 +1,8 @@
-# Phases H0-H1 dependencies -- more are added as later phases need them
+# Phases H0-H2 dependencies -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
-# to what was actually installed and verified (both phases' notebooks
-# executed for real against live Sentinel-2 data, full test suite green) --
-# not guessed.
+# to what was actually installed and verified (every phase's notebook
+# executed for real against live data, full test suite green) -- not
+# guessed.
 
 # Rasters / vectors / geospatial fundamentals
 rasterio==1.5.1
@@ -23,6 +23,15 @@ stackstac==0.5.1
 # environment; see notebooks/02_cloud_data_access.ipynb for the real outcome)
 earthengine-api==1.7.43
 geemap==0.38.5
+
+# Classical ML baseline (H2)
+scikit-learn==1.9.1
+
+# SAM 2 label-assist (H2 tests it; real payoff is drone/very-high-res
+# imagery in H6 -- see notebooks/03_landcover_baseline.ipynb section 8)
+segment-geospatial==1.4.2
+torch==2.14.0
+torchvision==0.29.0
 
 # Viz
 matplotlib==3.11.1
