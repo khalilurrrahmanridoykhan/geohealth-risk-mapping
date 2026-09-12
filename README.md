@@ -22,14 +22,16 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H1 done** — `src/imagery.get_imagery(aoi, date_range, sensor)`: a reusable,
-cloud-masked composite from Microsoft Planetary Computer, verified against both a dry
-and a monsoon season over Dhaka. The monsoon run surfaced a real finding (not assumed):
-persistent cloud cover left ~65% of pixels without a single clear observation even
-after compositing multiple scenes — confirming why the plan calls for a Sentinel-1 SAR
-path (Phase H5) rather than relying on optical imagery alone. See
+**Phase H2 done** — a RandomForest land-cover baseline trained on real Sentinel-2
+features against real ESA WorldCover reference labels, with a genuine spatial holdout
+and a confusion matrix that's honest about where it struggles (built-up/water confused
+with vegetation, likely real 2021-label vs. 2026-imagery drift in fast-changing Dhaka).
+Segment Anything (SAM) was tested for real as a labeling-assist tool: it turned out to
+be a poor fit for 20m Sentinel-2 resolution (confirmed by timing and inspecting its
+output, not assumed), so this phase used WorldCover for labels instead and deferred SAM
+to Phase H6's higher-resolution drone imagery, where it actually fits. See
 [`RESULTS.md`](RESULTS.md) for the numbers and [`PLAN.md`](PLAN.md) section 6 for
-what's next (H2 — Random Forest land-cover baseline).
+what's next (H3 — deep semantic segmentation with U-Net).
 
 ## Repo layout
 
