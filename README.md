@@ -22,14 +22,13 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H3 done** — a real U-Net (ResNet34 encoder) trained for water + built-up
-segmentation at 10m resolution, with the same spatial-block holdout discipline as every
-prior phase. It doesn't hit PLAN.md's target IoU, and the real reason is the phase's
-most useful result: the training region is ~30% built-up while the held-out eastern
-block is only ~4-5% built-up, a genuine spatial distribution shift that a random pixel
-split would have hidden entirely — precisely the failure mode spatial cross-validation
-exists to catch. See [`RESULTS.md`](RESULTS.md) for the numbers and
-[`PLAN.md`](PLAN.md) section 6 for what's next (H4 — vectorize + zonal stats pipeline).
+**Phase H4 done** — H3's real trained U-Net run over the full AOI, then turned into the
+artifact later phases actually need: one real per-district predictor table plus one real
+GeoPackage (vectorized, cleaned water/built-up polygons), produced by a single,
+reproducible function call (`src/pipeline.build_predictor_table`). Reproducibility was
+checked, not assumed — running the same command twice on the same inputs produces an
+identical table. See [`RESULTS.md`](RESULTS.md) for the numbers and
+[`PLAN.md`](PLAN.md) section 6 for what's next (H5 — SAR flood mapping with Sentinel-1).
 
 ## Repo layout
 
