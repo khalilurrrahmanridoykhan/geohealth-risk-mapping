@@ -22,10 +22,14 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H0 done** — real Sentinel-2 over Dhaka, NDVI/NDWI/NDBI, both raster↔vector
-directions, real per-district zonal stats. See [`RESULTS.md`](RESULTS.md) for the
-numbers and [`PLAN.md`](PLAN.md) section 6 for what's next (H1 — cloud data access as
-a reusable function) and section 7 for the overall MVP → v1 → stretch schedule.
+**Phase H1 done** — `src/imagery.get_imagery(aoi, date_range, sensor)`: a reusable,
+cloud-masked composite from Microsoft Planetary Computer, verified against both a dry
+and a monsoon season over Dhaka. The monsoon run surfaced a real finding (not assumed):
+persistent cloud cover left ~65% of pixels without a single clear observation even
+after compositing multiple scenes — confirming why the plan calls for a Sentinel-1 SAR
+path (Phase H5) rather than relying on optical imagery alone. See
+[`RESULTS.md`](RESULTS.md) for the numbers and [`PLAN.md`](PLAN.md) section 6 for
+what's next (H2 — Random Forest land-cover baseline).
 
 ## Repo layout
 

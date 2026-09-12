@@ -1,8 +1,8 @@
-# Phase H0 dependencies only -- more are added as later phases need them
+# Phases H0-H1 dependencies -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
-# to what was actually installed and verified (Phase H0 notebook executed
-# for real against live Sentinel-2 data, full test suite green) -- not
-# guessed.
+# to what was actually installed and verified (both phases' notebooks
+# executed for real against live Sentinel-2 data, full test suite green) --
+# not guessed.
 
 # Rasters / vectors / geospatial fundamentals
 rasterio==1.5.1
@@ -17,6 +17,12 @@ pandas==2.3.3
 pystac-client==0.9.0
 planetary-computer==1.0.0
 stackstac==0.5.1
+
+# Cloud data access (Earth Engine backend -- real API calls, but requires a
+# one-time interactive `earthengine authenticate` login not yet done in this
+# environment; see notebooks/02_cloud_data_access.ipynb for the real outcome)
+earthengine-api==1.7.43
+geemap==0.38.5
 
 # Viz
 matplotlib==3.11.1
