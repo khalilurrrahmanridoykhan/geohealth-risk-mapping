@@ -1,4 +1,4 @@
-# Phases H0-H3 dependencies -- more are added as later phases need them
+# Phases H0-H4 dependencies -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
 # to what was actually installed and verified (every phase's notebook
 # executed for real against live data, full test suite green) -- not
@@ -12,6 +12,7 @@ geopandas==1.1.4
 shapely==2.1.2
 rasterstats==0.21.0
 pandas==2.3.3
+fiona==1.10.1
 
 # Cloud data access (STAC, no account needed)
 pystac-client==0.9.0
