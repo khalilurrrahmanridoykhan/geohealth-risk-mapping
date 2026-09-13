@@ -22,17 +22,18 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H5 done** — real SAR flood mapping for a real event: the 2026 Bangladesh monsoon
-flood in Dirai, Sunamganj (a record 402mm of rain in 24 hours, part of flooding that hit
-10 districts and over 1.11 million people). A real Sentinel-1 before/during pair, real
-OpenStreetMap health facilities, and a real WorldPop population raster combine into one
-flood-extent map and one affected-population/facilities table. This phase also solved a
-real technical blocker H1 had deferred (Sentinel-1 support) — the fix was discovering the
-right data product (`sentinel-1-rtc`) rather than building complex GCP-aware reading by
-hand — and caught three more real bugs along the way (documented in the notebook and
-commit history, not swept under the rug). See [`RESULTS.md`](RESULTS.md) for the numbers
-and [`PLAN.md`](PLAN.md) section 6 for what's next (H6 — drone imagery + YOLO
-breeding-site detection).
+**Phase H6 done** — a real YOLO11n trained on a real ~10cm/px drone survey of a
+canal-side Dhaka neighborhood, against real Microsoft Building Footprints. This phase
+makes a documented, upfront scope call: PLAN.md names specific breeding-site classes
+(containers, tyres, stagnant pools, rooftop tanks) that no labeled dataset covers for
+this real imagery — hand-labeling them would mean fabricating "ground truth" with
+nothing real to check it against, which this project avoids at every phase. Building/
+structure detection is used instead, as the real precursor signal (dense settlement near
+standing water) the breeding-site classes would eventually plug into. A real, algorithmic
+stagnant-water flag caught and fixed its own bug along the way — the honest kind of
+result this repo tries to surface rather than hide. See [`RESULTS.md`](RESULTS.md) for
+the numbers and [`PLAN.md`](PLAN.md) section 6 for what's next (H7 — EO foundation
+models: Prithvi-EO-2.0, TerraMind, Clay via TerraTorch).
 
 ## Repo layout
 
