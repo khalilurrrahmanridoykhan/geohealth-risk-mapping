@@ -22,18 +22,15 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H6 done** — a real YOLO11n trained on a real ~10cm/px drone survey of a
-canal-side Dhaka neighborhood, against real Microsoft Building Footprints. This phase
-makes a documented, upfront scope call: PLAN.md names specific breeding-site classes
-(containers, tyres, stagnant pools, rooftop tanks) that no labeled dataset covers for
-this real imagery — hand-labeling them would mean fabricating "ground truth" with
-nothing real to check it against, which this project avoids at every phase. Building/
-structure detection is used instead, as the real precursor signal (dense settlement near
-standing water) the breeding-site classes would eventually plug into. A real, algorithmic
-stagnant-water flag caught and fixed its own bug along the way — the honest kind of
-result this repo tries to surface rather than hide. See [`RESULTS.md`](RESULTS.md) for
-the numbers and [`PLAN.md`](PLAN.md) section 6 for what's next (H7 — EO foundation
-models: Prithvi-EO-2.0, TerraMind, Clay via TerraTorch).
+**Phase H7 done** — a real, six-run comparison between a fine-tuned EO foundation model
+(Prithvi-EO-2.0, via TerraTorch) and a U-Net, at three label budgets, on the same real
+Sentinel-2 scene and reference labels H3 used. The result runs against the common
+expectation: U-Net wins clearly at every budget, and Prithvi shows no working
+label-efficiency advantage under this notebook's real CPU constraints (10 epochs, no
+learning-rate warmup) — reported honestly as a limitation of what this environment's
+compute could explore, not smoothed into a rosier conclusion. See
+[`RESULTS.md`](RESULTS.md) for the numbers and [`PLAN.md`](PLAN.md) section 6 for what's
+next (H8 — multi-season/time-series classification).
 
 ## Repo layout
 
