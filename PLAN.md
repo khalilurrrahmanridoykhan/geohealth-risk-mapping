@@ -226,7 +226,7 @@ Prohori, and it reuses the dengue/flood research plans already in this folder.
 
 | Milestone | Phases | Rough time | Proof |
 | :--- | :--- | :--- | :--- |
-| **MVP** (portfolio-ready) | H0–H4, H9(light), H11(static) | ~3 months | Water/built-up U-Net (IoU > 0.75), ward predictor table, one dengue correlation, one risk map, GitHub repo |
+| **MVP** | H0–H4, H9(light), H11(static) | ~3 months | Water/built-up U-Net (IoU > 0.75), ward predictor table, one dengue correlation, one risk map, GitHub repo |
 | **v1** | H5, H7, H8, H9, H10, H11 | +3 months | SAR flood maps, foundation-model comparison, proper spatiotemporal model, live Streamlit dashboard, shapefile/GeoTIFF exports |
 | **Stretch** | H6, H12, H13 | +2–3 months | Drone YOLO breeding-site map, monthly auto-refresh, methods paper + institutional outreach |
 
