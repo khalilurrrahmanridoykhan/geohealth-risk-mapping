@@ -1,4 +1,4 @@
-# Phases H0-H5 dependencies -- more are added as later phases need them
+# Phases H0-H6 dependencies -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
 # to what was actually installed and verified (every phase's notebook
 # executed for real against live data, full test suite green) -- not
@@ -14,6 +14,12 @@ rasterstats==0.21.0
 pandas==2.3.3
 fiona==1.10.1
 pyproj==3.8.0
+scipy==1.18.1
+
+# Real Microsoft Building Footprints access (H6) -- quadkey-partitioned
+# GeoParquet on Azure Blob Storage, needs adlfs directly since
+# pystac_client's sign_inplace modifier doesn't sign abfs:// table assets
+adlfs==2026.8.0
 
 # Cloud data access (STAC, no account needed)
 pystac-client==0.9.0
@@ -39,6 +45,9 @@ torchvision==0.29.0
 segmentation-models-pytorch==0.5.0
 torchgeo==0.10.0
 albumentations==2.0.8
+
+# Object detection on very-high-res drone imagery (H6)
+ultralytics==8.4.150
 
 # Viz
 matplotlib==3.11.1
