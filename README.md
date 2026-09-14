@@ -22,15 +22,15 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H7 done** — a real, six-run comparison between a fine-tuned EO foundation model
-(Prithvi-EO-2.0, via TerraTorch) and a U-Net, at three label budgets, on the same real
-Sentinel-2 scene and reference labels H3 used. The result runs against the common
-expectation: U-Net wins clearly at every budget, and Prithvi shows no working
-label-efficiency advantage under this notebook's real CPU constraints (10 epochs, no
-learning-rate warmup) — reported honestly as a limitation of what this environment's
-compute could explore, not smoothed into a rosier conclusion. See
+**Phase H8 done** — real dry/monsoon/post-monsoon (2025) Sentinel-2 composites for the
+same 3-district AOI, turned into real water-persistence and vegetation-dynamics layers
+in H4's per-district predictor table. Caught and fixed a real cross-season UTM-zone
+mismatch along the way (`get_imagery` now accepts an `epsg=` override), and verified —
+not assumed — that a backwards-looking negative "green-up" signal in Dhaka's urban core
+is a real, mappable cloud-contamination artifact (58% cloud-fallback pixels in the west
+vs. 12.5% in the east), not an actual seasonal vegetation decline. See
 [`RESULTS.md`](RESULTS.md) for the numbers and [`PLAN.md`](PLAN.md) section 6 for what's
-next (H8 — multi-season/time-series classification).
+next (H9 — spatial epidemiology core: the real dengue-count join).
 
 ## Repo layout
 
