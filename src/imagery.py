@@ -97,6 +97,7 @@ def get_imagery(
     cloud_cover_max: int = 60,
     resolution: int = 20,
     max_scenes: int = 10,
+    epsg: int | None = None,
 ):
     """Returns (composite, meta) -- composite is an xarray.DataArray
     (band, y, x) in the scene's native UTM CRS; meta is a dict documenting
@@ -111,6 +112,15 @@ def get_imagery(
     source: 'planetary_computer' (default, free, no account, verified
         against live data) or 'earth_engine' (real GEE API calls, but
         requires a one-time `earthengine authenticate` login).
+    epsg: force a specific UTM zone instead of auto-picking it from the
+        least-cloudy item's MGRS tile id. Real reason this exists: two
+        separate get_imagery() calls for the same AOI (e.g. different
+        seasons, as H8 does) can each pick their own least-cloudy item from
+        a *different* MGRS tile straddling this AOI, landing in different
+        UTM zones -- their pixel grids then don't align even though the
+        AOI is identical (found for real comparing H8's dry vs
+        post-monsoon composites: 32646 vs 32645). Pass the first call's
+        meta['epsg'] into the rest to keep every composite on one grid.
     """
     # Validated before any network call, so an invalid sensor/source fails
     # fast and offline -- exercised directly by tests/test_imagery.py without
@@ -119,13 +129,13 @@ def get_imagery(
         raise ValueError(f"unknown sensor {sensor!r}, expected 'sentinel-1' or 'sentinel-2'")
 
     if source == "planetary_computer":
-        return _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes)
+        return _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes, epsg)
     if source == "earth_engine":
         return _get_imagery_earth_engine(aoi, date_range, sensor, cloud_cover_max, resolution)
     raise ValueError(f"unknown source {source!r}, expected 'planetary_computer' or 'earth_engine'")
 
 
-def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes):
+def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes, epsg=None):
     import planetary_computer
     import pystac_client
     import rioxarray  # noqa: F401 -- registers the .rio accessor
@@ -151,7 +161,7 @@ def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, re
             f"no sentinel-2 scenes under {cloud_cover_max}% cloud cover found for "
             f"aoi={aoi}, date_range={date_range!r}"
         )
-    epsg = utm_epsg_from_sentinel2_id(items[0].id)
+    epsg = epsg if epsg is not None else utm_epsg_from_sentinel2_id(items[0].id)
     stack = stackstac.stack(
         items,
         assets=["B03", "B04", "B08", "B11", "SCL"],
