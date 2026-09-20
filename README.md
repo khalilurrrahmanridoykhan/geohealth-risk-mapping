@@ -22,21 +22,27 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H8 done** — real dry/monsoon/post-monsoon (2025) Sentinel-2 composites for the
-same 3-district AOI, turned into real water-persistence and vegetation-dynamics layers
-in H4's per-district predictor table. Caught and fixed a real cross-season UTM-zone
-mismatch along the way (`get_imagery` now accepts an `epsg=` override), and verified —
-not assumed — that a backwards-looking negative "green-up" signal in Dhaka's urban core
-is a real, mappable cloud-contamination artifact (58% cloud-fallback pixels in the west
-vs. 12.5% in the east), not an actual seasonal vegetation decline. See
-[`RESULTS.md`](RESULTS.md) for the numbers and [`PLAN.md`](PLAN.md) section 6 for what's
-next (H9 — spatial epidemiology core: the real dengue-count join).
+**Phase H9 done** — spatial epidemiology core on real DGHS dengue data. The public
+data stops at 10 reporting units (no ward-level counts exist), so the model is fitted
+on the 8 divisions: a Poisson GLM with a population offset turned out invalid (Pearson
+dispersion 2,555–4,545, vs. ~1 expected), so negative-binomial and quasi-Poisson models
+replace it. The result is an honest **null**: neither population density nor surface-water
+occurrence is statistically distinguishable from no effect at n = 8 (water IRR per SD
+1.45–1.66, CIs 0.89–3.04, includes 1). Residual spatial autocorrelation is checked,
+and limitations (ecological fallacy, hospital-location bias, n = 8) are written down.
+This also shows that H10 as specified needs finer data than is publicly available. See
+[`RESULTS.md`](RESULTS.md) for the numbers and
+[`notebooks/10_spatial_epidemiology.ipynb`](notebooks/10_spatial_epidemiology.ipynb).
+
+Earlier phases (H0–H8) — see [`RESULTS.md`](RESULTS.md); [`PLAN.md`](PLAN.md) section 6
+covers what's next.
 
 ## Repo layout
 
 ```
 PLAN.md           # the full phased roadmap -- start here
 data/
+├── snapshots/    # small dated public statistics (DGHS dengue counts), committed
 ├── raw/          # downloaded satellite scenes + boundary files (gitignored)
 └── processed/    # derived rasters/vectors (gitignored, reproducible from notebooks/)
 notebooks/        # one notebook per phase, in order
