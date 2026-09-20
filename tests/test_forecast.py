@@ -4,11 +4,15 @@ import pytest
 
 from src.forecast import (
     FEATURE_SETS,
+    MeanEnsemble,
+    TrendGrowth,
     ZeroGrowth,
     add_conformal_intervals,
     backtest,
     build_panel,
+    model_factories,
     mean_weekly_spearman,
+    paired_block_bootstrap_rmse_diff,
     rmse_log,
     top_k_hit_rate,
 )
@@ -175,3 +179,81 @@ def test_intervals_reach_roughly_nominal_coverage_on_stationary_errors():
     )
     result = add_conformal_intervals(frame, horizon=2, level=0.8, min_errors=40)
     assert result["covered"].dropna().astype(float).mean() == pytest.approx(0.8, abs=0.06)
+
+
+def test_trend_growth_extrapolates_the_recent_log_change():
+    X = np.array([[3.0, 0.2, 0.4]])  # d1 = 0.2, d2 = 0.4 -> mean 0.3
+    assert TrendGrowth(horizon=2, d1_col=1, d2_col=2).predict(X)[0] == pytest.approx(0.6)
+
+
+def test_trend_growth_beats_persistence_on_steadily_growing_data():
+    cases, weather = _inputs(n_weeks=30, growth=1.15)
+    panel = build_panel(cases, POPULATION, weather, STATIC, horizon=2)
+    features = FEATURE_SETS["autoregressive"]
+    origins = range(14, 28)
+    persistence = backtest(panel, ZeroGrowth, features, origins, 2)
+    trend = backtest(panel, lambda: TrendGrowth(2, features.index("d1"), features.index("d2")), features, origins, 2)
+    assert rmse_log(trend) < rmse_log(persistence) / 2
+
+
+def test_mean_ensemble_averages_member_predictions():
+    class Constant:
+        def __init__(self, value):
+            self.value = value
+
+        def fit(self, X, y):
+            return self
+
+        def predict(self, X):
+            return np.full(len(X), self.value)
+
+    ensemble = MeanEnsemble([lambda: Constant(1.0), lambda: Constant(3.0)]).fit(np.zeros((2, 1)), np.zeros(2))
+    assert ensemble.predict(np.zeros((2, 1))).tolist() == [2.0, 2.0]
+
+
+def _predictions(errors_by_origin, noise_seed=0):
+    rng = np.random.default_rng(noise_seed)
+    rows = [
+        {"origin": o, "division": d, "y_true": 1.0, "y_pred": 1.0 + e * rng.choice([-1, 1])}
+        for o, e in errors_by_origin.items()
+        for d in ("A", "B")
+    ]
+    return pd.DataFrame(rows)
+
+
+def test_bootstrap_diff_is_exactly_zero_for_identical_predictions():
+    frame = _predictions({o: 0.3 for o in range(1, 21)})
+    assert paired_block_bootstrap_rmse_diff(frame, frame.copy()) == (0.0, 0.0, 0.0)
+
+
+def test_bootstrap_diff_excludes_zero_for_a_clearly_better_model():
+    worse = _predictions({o: 0.5 for o in range(1, 31)})
+    better = _predictions({o: 0.1 for o in range(1, 31)})
+    diff, lo, hi = paired_block_bootstrap_rmse_diff(better, worse)
+    assert diff == pytest.approx(-0.4) and hi < 0
+
+
+def test_bootstrap_diff_interval_includes_zero_when_models_are_equally_noisy():
+    rng = np.random.default_rng(4)
+    a = _predictions({o: rng.uniform(0.2, 0.4) for o in range(1, 31)}, noise_seed=1)
+    b = _predictions({o: rng.uniform(0.2, 0.4) for o in range(1, 31)}, noise_seed=2)
+    _, lo, hi = paired_block_bootstrap_rmse_diff(a, b)
+    assert lo < 0 < hi
+
+
+def test_bootstrap_diff_requires_matching_backtests():
+    a = _predictions({o: 0.3 for o in range(1, 11)})
+    with pytest.raises(ValueError, match="same origins"):
+        paired_block_bootstrap_rmse_diff(a, a[a["origin"] > 2])
+
+
+def test_model_factories_run_end_to_end_and_only_offer_trend_when_d1_d2_exist():
+    cases, weather = _inputs(n_weeks=30, growth=1.1)
+    panel = build_panel(cases, POPULATION, weather, STATIC, horizon=2)
+    features = FEATURE_SETS["plus_weather"]
+    factories = model_factories(2, features)
+    assert set(factories) == {"ridge", "xgboost", "ensemble", "trend"}
+    for name, factory in factories.items():
+        result = backtest(panel, factory, features, origins=[20, 21], horizon=2)
+        assert len(result) == 6 and np.isfinite(result["y_pred"]).all(), name
+    assert "trend" not in model_factories(2, ["log_inc0", "rain_recent"])

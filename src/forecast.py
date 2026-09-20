@@ -1,7 +1,13 @@
 """Phase H10 -- short-horizon dengue risk forecasting, built to be validated
 honestly on very little data.
 
-Design choices, all made before looking at any model output:
+Design choices made before the first real backtest run: the growth target, the
+rolling-origin scheme, the feature sets, the fixed hyperparameters, and the
+first origin (week 20). Added *after* the first run: `TrendGrowth` (an
+alternative baseline, on the thought that persistence -- zero growth -- is weak
+in a growing epidemic; on the real data it turned out *worse* than persistence)
+and `MeanEnsemble` (the PLAN's GLM + XGBoost combination). Disclosed in the
+notebook; every configuration run is reported, not only the good ones.
 
 * **Target = log growth**, `log1p(inc[t+h]) - log1p(inc[t])` (inc = admissions
   per 100k). A model that always predicts 0 growth *is* the persistence
@@ -89,6 +95,65 @@ class ZeroGrowth:
         return np.zeros(len(X))
 
 
+class TrendGrowth:
+    """Trend extrapolation: assumes the average of the last two weekly log
+    changes (features d1, d2) continues for `horizon` weeks. An alternative
+    baseline to persistence (which predicts zero growth by construction);
+    weekly changes are noisy and mean-reverting, so on the real 2026 data it
+    does worse than persistence. `d1_col`/`d2_col` are the positions of d1
+    and d2 in the feature matrix."""
+
+    def __init__(self, horizon: int, d1_col: int, d2_col: int):
+        self.horizon, self.d1_col, self.d2_col = horizon, d1_col, d2_col
+
+    def fit(self, X, y):
+        return self
+
+    def predict(self, X):
+        X = np.asarray(X, dtype=float)
+        return self.horizon * (X[:, self.d1_col] + X[:, self.d2_col]) / 2
+
+
+class MeanEnsemble:
+    """Average of the growth predictions of several models."""
+
+    def __init__(self, factories):
+        self.factories = list(factories)
+        self.models = []
+
+    def fit(self, X, y):
+        self.models = [factory().fit(X, y) for factory in self.factories]
+        return self
+
+    def predict(self, X):
+        return np.mean([np.asarray(m.predict(X), dtype=float) for m in self.models], axis=0)
+
+
+def model_factories(horizon: int, features: list[str]) -> dict:
+    """The fixed model set used for every backtest: ridge regression, a shallow
+    gradient-boosted tree model, their mean ensemble, and (when d1/d2 are among
+    the features) the trend baseline. Hyperparameters are set once here and
+    never tuned against the backtest."""
+    from sklearn.linear_model import Ridge
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    from xgboost import XGBRegressor
+
+    def ridge():
+        return make_pipeline(StandardScaler(), Ridge(alpha=10.0))
+
+    def xgboost():
+        return XGBRegressor(
+            n_estimators=150, max_depth=2, learning_rate=0.05, subsample=0.8,
+            min_child_weight=5, reg_lambda=5, random_state=0, n_jobs=1,
+        )
+
+    factories = {"ridge": ridge, "xgboost": xgboost, "ensemble": lambda: MeanEnsemble([ridge, xgboost])}
+    if {"d1", "d2"} <= set(features):
+        factories["trend"] = lambda: TrendGrowth(horizon, features.index("d1"), features.index("d2"))
+    return factories
+
+
 def backtest(panel: pd.DataFrame, model_factory, features: list[str], origins, horizon: int) -> pd.DataFrame:
     """Rolling-origin backtest. At each origin week a fresh model is trained on
     rows whose target week is <= origin, then predicts the growth from that
@@ -172,3 +237,39 @@ def add_conformal_intervals(predictions: pd.DataFrame, horizon: int, level: floa
     inside = (predictions["y_true"] >= predictions["lo"]) & (predictions["y_true"] <= predictions["hi"])
     predictions["covered"] = inside.astype(float).where(predictions["lo"].notna())  # 1.0 / 0.0, NaN if no interval
     return predictions
+
+
+def paired_block_bootstrap_rmse_diff(
+    a: pd.DataFrame, b: pd.DataFrame, block: int = 4, n_boot: int = 2000, seed: int = 0, column: str = "y_pred"
+) -> tuple[float, float, float]:
+    """RMSE(a) - RMSE(b) over the same backtest points, with a 95% interval
+    from a moving-block bootstrap over *origin weeks* (blocks keep neighbouring,
+    autocorrelated weeks together; resampling single rows would make the
+    interval far too narrow). Negative = a is better. Returns (diff, lo, hi).
+    """
+    merged = a.merge(b, on=["origin", "division"], suffixes=("_a", "_b"))
+    if len(merged) != len(a) or len(merged) != len(b):
+        raise ValueError("the two backtests must cover the same origins and divisions")
+    per_origin = merged.groupby("origin").apply(
+        lambda g: pd.Series(
+            {
+                "mse_a": ((g["y_true_a"] - g[f"{column}_a"]) ** 2).mean(),
+                "mse_b": ((g["y_true_b"] - g[f"{column}_b"]) ** 2).mean(),
+            }
+        ),
+        include_groups=False,
+    ).sort_index()
+    mse_a, mse_b = per_origin["mse_a"].to_numpy(), per_origin["mse_b"].to_numpy()
+    n = len(per_origin)
+    block = min(block, n)
+    diff = float(np.sqrt(mse_a.mean()) - np.sqrt(mse_b.mean()))
+    rng = np.random.default_rng(seed)
+    starts_available = n - block + 1
+    n_blocks = int(np.ceil(n / block))
+    diffs = np.empty(n_boot)
+    for i in range(n_boot):
+        starts = rng.integers(0, starts_available, size=n_blocks)
+        idx = np.concatenate([np.arange(s, s + block) for s in starts])[:n]
+        diffs[i] = np.sqrt(mse_a[idx].mean()) - np.sqrt(mse_b[idx].mean())
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    return diff, float(lo), float(hi)

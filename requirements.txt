@@ -1,4 +1,4 @@
-# Phases H0-H9 dependencies -- more are added as later phases need them
+# Phases H0-H10 dependencies -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
 # to what was actually installed and verified (every phase's notebook
 # executed for real against live data, full test suite green) -- not
@@ -56,6 +56,10 @@ terratorch==1.2.13
 statsmodels==0.15.0
 esda==2.10.0
 libpysal==4.15.0
+
+# Forecasting + interpretation (H10) -- scikit-learn (above) for ridge
+xgboost==3.4.1
+shap==0.52.0
 
 # Viz
 matplotlib==3.11.1
