@@ -1,6 +1,6 @@
 import pytest
 
-from src.dghs import extract_chart, parse_unit_counts, to_divisions
+from src.dghs import extract_chart, parse_unit_counts, parse_weekly_division, to_divisions
 
 _UNITS = ["Barishal ", "Chattogram ", "Dhaka  (Out of CC)", "DNCC", "DSCC", "Khulna ", "Mymensingh ", "Rajshahi ", "Rangpur ", "Sylhet "]
 
@@ -79,3 +79,37 @@ def test_to_divisions_raises_if_a_dhaka_unit_is_missing():
     counts = parse_unit_counts(_page(CASES, DEATHS)).drop(index="DNCC")
     with pytest.raises(ValueError, match="DNCC"):
         to_divisions(counts)
+
+
+def _weekly_page(series: dict[str, list[int]]) -> str:
+    n = len(next(iter(series.values())))
+    cats = ",".join(f'"W{i + 1:02d}"' for i in range(n))
+    body = ",\n".join(f"{{name: '{name}', data: {data}}}" for name, data in series.items())
+    return f"""<script>
+    Highcharts.chart('affected_in_division_by_week', {{
+        xAxis: {{ categories: [{cats}] }},
+        series: [
+            {body}
+        ]
+    }});
+</script>"""
+
+
+def test_parse_weekly_division_reads_weeks_and_uses_geoboundaries_names():
+    page = _weekly_page({"Barisal": [1, 2, 3], "Dhaka": [10, 20, 30], "Chattogram": [4, 5, 6], "Rajshahi": [7, 8, 9]})
+    weekly = parse_weekly_division(page)
+    assert list(weekly.index) == [1, 2, 3]
+    assert list(weekly.columns) == ["Barisal", "Chittagong", "Dhaka", "Rajshani"]
+    assert weekly["Dhaka"].tolist() == [10, 20, 30]
+    assert weekly["Chittagong"].tolist() == [4, 5, 6]
+
+
+def test_parse_weekly_division_raises_when_the_chart_is_missing():
+    with pytest.raises(ValueError, match="not found"):
+        parse_weekly_division("<html></html>")
+
+
+def test_parse_weekly_division_raises_on_a_short_series():
+    page = _weekly_page({"Dhaka": [1, 2, 3]}).replace("data: [1, 2, 3]", "data: [1, 2]")
+    with pytest.raises(ValueError, match="values for"):
+        parse_weekly_division(page)

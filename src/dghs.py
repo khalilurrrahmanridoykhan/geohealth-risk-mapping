@@ -17,6 +17,7 @@ import re
 
 import pandas as pd
 
+_WEEKLY_CHART = "affected_in_division_by_week"
 _CASES_CHART = "div_city_cor_case_in_year"
 _DEATHS_CHART = "div_city_cor_death_in_year"
 
@@ -91,3 +92,26 @@ def to_divisions(counts: pd.DataFrame) -> pd.DataFrame:
     divisions.index = [_TO_GEOBOUNDARIES.get(name, name) for name in divisions.index]
     divisions.index.name = "division"
     return divisions.sort_index().astype(int)
+
+
+def parse_weekly_division(html: str) -> pd.DataFrame:
+    """Weekly admitted cases for each of the 8 divisions (Dhaka is one
+    division here, city corporations included) for the current year: index =
+    DGHS week number (1..N), columns = division names in geoBoundaries'
+    spelling.
+
+    Week boundaries are not documented by DGHS and could not be reproduced
+    from its daily series, so treat the week number as an epi-week label.
+    """
+    chart = extract_chart(html, _WEEKLY_CHART)
+    if not chart["categories"] or not chart["series"]:
+        raise ValueError(f"chart {_WEEKLY_CHART!r} not found or empty -- the dashboard layout may have changed")
+    weeks = [int(re.sub(r"\D", "", c)) for c in chart["categories"]]
+    columns = {}
+    for series in chart["series"]:
+        if len(series["data"]) != len(weeks):
+            raise ValueError(f"series {series['name']!r}: {len(series['data'])} values for {len(weeks)} weeks")
+        name = _clean_unit_name(series["name"])
+        columns[_TO_GEOBOUNDARIES.get(name, name)] = [int(v) for v in series["data"]]
+    table = pd.DataFrame(columns, index=pd.Index(weeks, name="week"))
+    return table[sorted(table.columns)]
