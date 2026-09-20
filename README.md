@@ -22,16 +22,20 @@ benchmark dataset.
 
 ## Current status
 
-**Phase H9 done** — spatial epidemiology core on real DGHS dengue data. The public
-data stops at 10 reporting units (no ward-level counts exist), so the model is fitted
-on the 8 divisions: a Poisson GLM with a population offset turned out invalid (Pearson
-dispersion 2,555–4,545, vs. ~1 expected), so negative-binomial and quasi-Poisson models
-replace it. The result is an honest **null**: neither population density nor surface-water
-occurrence is statistically distinguishable from no effect at n = 8 (water IRR per SD
-1.45–1.66, CIs 0.89–3.04, includes 1). Residual spatial autocorrelation is checked,
-and limitations (ecological fallacy, hospital-location bias, n = 8) are written down.
-This also shows that H10 as specified needs finer data than is publicly available. See
-[`RESULTS.md`](RESULTS.md) for the numbers and
+**Phase H10 done (reformulated to what the public data supports)** — a division-level,
+two-week-ahead dengue admissions outlook, back-tested with a rolling-origin scheme inside
+2026 (real DGHS division-by-week counts + NASA POWER weather; **not** ward-level, **not** a
+held-out season — neither exists publicly). Ridge + XGBoost (SHAP) beat "no change" at 2 and
+4 weeks ahead (RMSE −24% and −39%) but not at 1 week; the static density/water layers added
+nothing; weather helps only at 4 weeks and is confounded with season in a single year; the
+ranking is essentially last week's ranking; and the nominal-80% intervals covered only 61%.
+The result is three loose tiers of divisions, not eight ranks. See
+[`docs/HOW_TO_READ.md`](docs/HOW_TO_READ.md), [`RESULTS.md`](RESULTS.md) and
+[`notebooks/11_risk_scoring.ipynb`](notebooks/11_risk_scoring.ipynb).
+
+**Phase H9 done** — spatial epidemiology on the 8 divisions (the finest public dengue
+geography): Poisson was invalid (dispersion 2,555–4,545), and neither population density nor
+surface-water occurrence is distinguishable from no effect at n = 8. See
 [`notebooks/10_spatial_epidemiology.ipynb`](notebooks/10_spatial_epidemiology.ipynb).
 
 Earlier phases (H0–H8) — see [`RESULTS.md`](RESULTS.md); [`PLAN.md`](PLAN.md) section 6
@@ -42,7 +46,7 @@ covers what's next.
 ```
 PLAN.md           # the full phased roadmap -- start here
 data/
-├── snapshots/    # small dated public statistics (DGHS dengue counts), committed
+├── snapshots/    # small dated public statistics (DGHS dengue counts, NASA POWER weather), committed
 ├── raw/          # downloaded satellite scenes + boundary files (gitignored)
 └── processed/    # derived rasters/vectors (gitignored, reproducible from notebooks/)
 notebooks/        # one notebook per phase, in order
