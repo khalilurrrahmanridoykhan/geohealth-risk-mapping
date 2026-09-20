@@ -53,6 +53,7 @@ notebooks/        # one notebook per phase, in order
 src/              # shared, unit-tested code the notebooks import
 tests/            # pytest tests, using synthetic/small data (no download needed)
 scripts/          # data-fetching and pipeline scripts
+docs/             # plain-language guides (how to read the dengue outlook)
 ```
 
 ## Running it
