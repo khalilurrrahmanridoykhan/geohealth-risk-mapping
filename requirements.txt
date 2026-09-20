@@ -1,4 +1,4 @@
-# Phases H0-H7 dependencies -- more are added as later phases need them
+# Phases H0-H9 dependencies -- more are added as later phases need them
 # (see PLAN.md section 5, "Tooling introduced per phase"). Versions pinned
 # to what was actually installed and verified (every phase's notebook
 # executed for real against live data, full test suite green) -- not
@@ -51,6 +51,11 @@ ultralytics==8.4.150
 
 # EO foundation models -- Prithvi-EO-2.0 via TerraTorch (H7)
 terratorch==1.2.13
+
+# Spatial epidemiology (H9) -- count models, Moran's I, spatial weights
+statsmodels==0.15.0
+esda==2.10.0
+libpysal==4.15.0
 
 # Viz
 matplotlib==3.11.1
