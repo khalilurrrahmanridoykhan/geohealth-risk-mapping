@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from src.imagery import (
+    _SENTINEL2_BAND_NAMES,
     always_cloudy_fraction,
     composite_cloud_masked,
     get_imagery,
@@ -74,6 +75,15 @@ def test_utm_epsg_from_sentinel2_id_raises_on_an_unrecognized_id():
 def test_get_imagery_rejects_an_unknown_source():
     with pytest.raises(ValueError):
         get_imagery((90.0, 23.0, 90.1, 23.1), "2026-01-01/2026-01-31", source="not_a_real_source")
+
+
+def test_sentinel2_band_names_keep_every_band_used_through_h9_unchanged():
+    # the exact strings every H0-H9 notebook's committed meta['bands'] output
+    # already shows -- adding new bands (e.g. for Prithvi's recipe) must
+    # never change what a past phase's real run says it used.
+    assert [_SENTINEL2_BAND_NAMES[b] for b in ("B03", "B04", "B08", "B11")] == [
+        "green", "red", "nir", "swir",
+    ]
 
 
 def test_get_imagery_rejects_an_unknown_sensor():

@@ -98,6 +98,7 @@ def get_imagery(
     resolution: int = 20,
     max_scenes: int = 10,
     epsg: int | None = None,
+    bands: list[str] | None = None,
 ):
     """Returns (composite, meta) -- composite is an xarray.DataArray
     (band, y, x) in the scene's native UTM CRS; meta is a dict documenting
@@ -121,6 +122,13 @@ def get_imagery(
         AOI is identical (found for real comparing H8's dry vs
         post-monsoon composites: 32646 vs 32645). Pass the first call's
         meta['epsg'] into the rest to keep every composite on one grid.
+    bands: Sentinel-2 asset names to fetch, e.g. ["B02", "B03", "B04", "B08",
+        "B11", "B12"]. Defaults to this project's original 4-band set
+        (B03/B04/B08/B11) used by every phase through H9 -- pass this
+        explicitly for anything that needs a different band set, e.g. a
+        foundation model's documented band vocabulary (Prithvi's standard
+        recipe wants 6 bands including BLUE and a second SWIR band neither
+        of which the default set has). Ignored for sensor='sentinel-1'.
     """
     # Validated before any network call, so an invalid sensor/source fails
     # fast and offline -- exercised directly by tests/test_imagery.py without
@@ -129,13 +137,27 @@ def get_imagery(
         raise ValueError(f"unknown sensor {sensor!r}, expected 'sentinel-1' or 'sentinel-2'")
 
     if source == "planetary_computer":
-        return _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes, epsg)
+        return _get_imagery_planetary_computer(
+            aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes, epsg, bands
+        )
     if source == "earth_engine":
         return _get_imagery_earth_engine(aoi, date_range, sensor, cloud_cover_max, resolution)
     raise ValueError(f"unknown source {source!r}, expected 'planetary_computer' or 'earth_engine'")
 
 
-def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes, epsg=None):
+# B08/B11 keep their original short names ("nir"/"swir", not "nir_broad"/
+# "swir1") to match every meta['bands'] string already committed in
+# notebooks through H9 -- this dict only ever *adds* new names (B02, B12,
+# ...), it never silently changes what a past phase's output says.
+_SENTINEL2_BAND_NAMES = {
+    "B01": "coastal_aerosol", "B02": "blue", "B03": "green", "B04": "red",
+    "B05": "red_edge_1", "B06": "red_edge_2", "B07": "red_edge_3",
+    "B08": "nir", "B8A": "nir_narrow", "B09": "water_vapor",
+    "B11": "swir", "B12": "swir2",
+}
+
+
+def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, resolution, max_scenes, epsg=None, bands=None):
     import planetary_computer
     import pystac_client
     import rioxarray  # noqa: F401 -- registers the .rio accessor
@@ -162,18 +184,19 @@ def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, re
             f"aoi={aoi}, date_range={date_range!r}"
         )
     epsg = epsg if epsg is not None else utm_epsg_from_sentinel2_id(items[0].id)
+    asset_bands = bands if bands is not None else ["B03", "B04", "B08", "B11"]
     stack = stackstac.stack(
         items,
-        assets=["B03", "B04", "B08", "B11", "SCL"],
+        assets=[*asset_bands, "SCL"],
         bounds_latlon=list(aoi),
         resolution=resolution,
         epsg=epsg,
     )
     arr = stack.compute()
-    bands = arr.sel(band=["B03", "B04", "B08", "B11"]).values  # (time, band, y, x)
+    band_values = arr.sel(band=asset_bands).values  # (time, band, y, x)
     scl = arr.sel(band="SCL").values  # (time, y, x)
-    scl_per_band = np.broadcast_to(scl[:, None, :, :], bands.shape)
-    composite = composite_cloud_masked(bands, scl_per_band)  # (band, y, x)
+    scl_per_band = np.broadcast_to(scl[:, None, :, :], band_values.shape)
+    composite = composite_cloud_masked(band_values, scl_per_band)  # (band, y, x)
 
     meta = {
         "sensor": sensor,
@@ -183,14 +206,14 @@ def _get_imagery_planetary_computer(aoi, date_range, sensor, cloud_cover_max, re
         "item_ids": [i.id for i in items],
         "cloud_cover_pct": [round(i.properties["eo:cloud_cover"], 2) for i in items],
         "epsg": epsg,
-        "bands": ["B03_green", "B04_red", "B08_nir", "B11_swir"],
+        "bands": [f"{b}_{_SENTINEL2_BAND_NAMES.get(b, b.lower())}" for b in asset_bands],
         # Fraction of pixels with zero clear observation across every scene
         # used -- these fell back to a cloud-contaminated plain median. High
         # values mean this composite is NOT reliable; widen date_range, raise
         # max_scenes, or use Sentinel-1 (H5) instead. Not swept under the rug.
         "always_cloudy_fraction": always_cloudy_fraction(scl),
     }
-    composite_da = stack.sel(band=["B03", "B04", "B08", "B11"]).isel(time=0).copy(data=composite)
+    composite_da = stack.sel(band=asset_bands).isel(time=0).copy(data=composite)
     return composite_da, meta
 
 
