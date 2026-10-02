@@ -41,3 +41,19 @@ def assign_tile_split(coords: list[tuple[int, int]], width: int, test_fraction: 
         raise ValueError(f"test_fraction must be between 0 and 1, got {test_fraction}")
     split_col = width * (1 - test_fraction)
     return [col_start >= split_col for _, col_start in coords]
+
+
+def untile_array(
+    tiles: list[np.ndarray], coords: list[tuple[int, int]], output_shape: tuple[int, int], fill_value=False
+) -> np.ndarray:
+    """Inverse of tile_array for 2D tiles: stitches tiles back at their
+    (row_start, col_start) coords into an array of output_shape. Tiles are
+    written in the order given, so later tiles overwrite earlier ones at
+    any overlap (tile_array itself never produces overlap; this only
+    matters if coords come from elsewhere). Pixels no tile covers -- the
+    dropped-incomplete-edge rows/columns tile_array leaves out -- keep
+    fill_value (default False, for boolean masks)."""
+    out = np.full(output_shape, fill_value, dtype=tiles[0].dtype if tiles else bool)
+    for tile, (row, col) in zip(tiles, coords):
+        out[row:row + tile.shape[-2], col:col + tile.shape[-1]] = tile
+    return out

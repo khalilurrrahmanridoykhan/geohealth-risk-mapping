@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.tiling import assign_tile_split, tile_array
+from src.tiling import assign_tile_split, tile_array, untile_array
 
 
 def test_tile_array_splits_an_exact_grid():
@@ -41,3 +41,19 @@ def test_assign_tile_split_holds_out_the_eastern_fraction():
 def test_assign_tile_split_rejects_an_invalid_fraction():
     with pytest.raises(ValueError):
         assign_tile_split([(0, 0)], width=100, test_fraction=0)
+
+
+def test_untile_array_is_the_inverse_of_tile_array():
+    arr = np.arange(512 * 512).reshape(512, 512)
+    tiles, coords = tile_array(arr, tile_size=256)
+    rebuilt = untile_array(tiles, coords, output_shape=(512, 512), fill_value=0)
+    assert np.array_equal(rebuilt, arr)
+
+
+def test_untile_array_fills_dropped_edge_regions():
+    arr = np.ones((600, 300))
+    tiles, coords = tile_array(arr, tile_size=256)  # drops the bottom 88px and right 44px
+    rebuilt = untile_array(tiles, coords, output_shape=(600, 300), fill_value=-1)
+    assert np.all(rebuilt[:512, :256] == 1)
+    assert np.all(rebuilt[512:, :] == -1)
+    assert np.all(rebuilt[:, 256:] == -1)
