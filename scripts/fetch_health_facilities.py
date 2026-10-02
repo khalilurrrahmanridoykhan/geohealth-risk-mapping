@@ -9,6 +9,8 @@ Usage:
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -56,7 +58,7 @@ def overpass_elements_to_geojson(elements: list[dict]) -> dict:
     return {"type": "FeatureCollection", "features": features}
 
 
-def fetch_health_facilities(bbox: tuple[float, float, float, float]) -> dict:
+def fetch_health_facilities(bbox: tuple[float, float, float, float], retries: int = 3) -> dict:
     query = build_overpass_query(bbox, HEALTH_AMENITIES)
     data = urllib.parse.urlencode({"data": query}).encode()
     # Overpass returns 406 Not Acceptable without a real User-Agent -- it
@@ -65,9 +67,23 @@ def fetch_health_facilities(bbox: tuple[float, float, float, float]) -> dict:
         OVERPASS_URL, data=data,
         headers={"User-Agent": "geohealth-risk-mapping/0.1 (github.com/khalilurrrahmanridoykhan/geohealth-risk-mapping)"},
     )
-    with urllib.request.urlopen(request, timeout=90) as response:
-        result = json.load(response)
-    return overpass_elements_to_geojson(result["elements"])
+    # Real failure seen running this from a cloud GPU notebook (not from a home
+    # connection): a transient 504 Gateway Timeout from Overpass's public instance
+    # under load. A plain retry with backoff is the honest fix -- no second mirror
+    # endpoint is used here because none could actually be verified reachable.
+    last_error: urllib.error.HTTPError | None = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(request, timeout=90) as response:
+                result = json.load(response)
+            return overpass_elements_to_geojson(result["elements"])
+        except urllib.error.HTTPError as e:
+            last_error = e
+            if attempt < retries - 1:
+                wait = 10 * (attempt + 1)
+                print(f"Overpass request failed ({e.code} {e.reason}), retrying in {wait}s...")
+                time.sleep(wait)
+    raise last_error
 
 
 def main() -> None:
