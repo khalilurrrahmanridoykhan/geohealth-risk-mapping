@@ -50,6 +50,7 @@ data/
 ├── raw/          # downloaded satellite scenes + boundary files (gitignored)
 └── processed/    # derived rasters/vectors (gitignored, reproducible from notebooks/)
 notebooks/        # one notebook per phase, in order
+notebooks_paper/  # separate AI Paper Track (P0-P6), GPU/Kaggle-only -- see its own README
 src/              # shared, unit-tested code the notebooks import
 tests/            # pytest tests, using synthetic/small data (no download needed)
 scripts/          # data-fetching and pipeline scripts
