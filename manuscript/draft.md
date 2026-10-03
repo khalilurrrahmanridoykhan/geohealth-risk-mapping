@@ -1,12 +1,24 @@
 # What a Fair Comparison of Earth Observation Foundation Models Actually Looks Like on One Small, Real, Consequential Flood
 
-**Status:** Draft (Phase P5), 2026-10-03. Not yet submitted anywhere (Phase P6).
-Submission-ready `.docx` at `manuscript/manuscript.docx` (required format for the
-target venue -- PDF is not accepted). Target venue: **International Journal of
-Disaster Risk Reduction** (Elsevier, Scimago Q1, SJR 1.243) -- real topical fit for
-both halves of this paper, and, verified directly (not assumed), Bangladesh
-qualifies for Elsevier's full (100%) APC waiver as a Research4Life Group A country,
-making open-access publication here free. Solo authorship, no co-author sought.
+**Status:** Draft (Phase P5), 2026-10-03. Submission in progress on Editorial Manager
+(Phase P6). Target venue: **International Journal of Disaster Risk Reduction**
+(Elsevier, Scimago Q1, SJR 1.243) -- real topical fit for both halves of this paper,
+and, verified directly (not assumed), Bangladesh qualifies for Elsevier's full (100%)
+APC waiver as a Research4Life Group A country, making open-access publication here
+free. Solo authorship, no co-author sought.
+
+**This journal uses double-blind review**, discovered at the Editorial Manager
+upload step, not assumed in advance -- the single combined `manuscript.docx` built
+first is kept as a convenience reading copy, but the actual Editorial Manager upload
+uses three separate files, each a required item type there:
+- `manuscript_blinded.docx` -- "Manuscript File -- Original Submission": no author
+  name/affiliation/email anywhere, including the Data Availability section's GitHub
+  link (withheld there specifically because the real URL contains the author's
+  username -- caught and fixed before upload, not after a desk-reject).
+- `title_page.docx` -- "Title page (with author information)": title, author,
+  affiliation, corresponding author, email, keywords, funding/acknowledgements.
+- `declaration_of_interest.docx` -- "Declaration of Interest Statement": standard
+  no-conflict statement.
 
 ## Abstract
 
