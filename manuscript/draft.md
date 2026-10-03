@@ -18,14 +18,14 @@ agree in direction, water IoU +0.121 to +0.148). Clay's apparent advantage over 
 same U-Net, reported in an earlier single run, does not survive the same check (sign
 flips across seeds on both harder classes) -- a concrete illustration of why
 single-run foundation-model comparisons are unreliable even when the recipe is
-correct. On the real flood event, neither foundation model beats a 60-year-old
+correct. On the real flood event, neither foundation model beats a decades-old
 classical Otsu threshold, and all three models fail to generalize at all to a
 third-party AOI 140km away, collapsing to the majority class. We report exact
 sample sizes (as few as 6-16 held-out tiles), do not claim statistical power we do not
-have, and are explicit that Prithvi's and Clay's own published
-Sentinel-1-flood/Sen1Floods11 numbers (IoU 0.70-0.78 on a curated multi-event
-benchmark) look nothing like what either model achieves on this one real event
-(IoU 0.04-0.13) -- a real, measured gap between benchmark and deployment-scale
+have, and are explicit that Prithvi's own reported Sen1Floods11 numbers (IoU
+0.70-0.78, from an in-progress, unpublished benchmarking project, via optical input)
+look nothing like what we measured on this one real SAR event (IoU 0.04-0.13) -- a
+real, measured gap between benchmark and deployment-scale
 evidence, not asserted from priors. Code, notebooks, and real run logs are public.
 
 ## 1. Introduction
@@ -266,13 +266,15 @@ Three-way comparison on the real Sunamganj flood (36 tiles total, 30 train/6 hel
 | Clay v1.5 (SAR) | 0.040 | -- | -- | -- | -- |
 
 A full GPU epoch budget meaningfully improves the U-Net over an earlier CPU-limited
-10-epoch attempt (IoU 0.077 -> 0.130, ~70% relative), but it remains far below either
-model's own published Sen1Floods11-benchmark numbers (Section 5), and it disagrees
-with the classical method about *which* facilities are at risk, not just how much
-area floods (6 vs. 5 of 13 facilities, despite mapping *less* than half the flooded
-area). Clay transfers poorly from its optical/multi-sensor pretraining to raw SAR
-backscatter. On this one real, consequential event, the 60-year-old classical
-threshold remains the most defensible method of the three.
+10-epoch attempt (IoU 0.077 -> 0.130, ~70% relative), but it remains far below the
+comparable U-Net baseline (0.823) and Prithvi range (0.699-0.779) reported on the
+curated Sen1Floods11 benchmark (Section 5; Clay has no published flood-segmentation
+benchmark number to compare against at all). It also disagrees with the classical
+method about *which* facilities are at risk, not just how much area floods (6 vs. 5
+of 13 facilities, despite mapping *less* than half the flooded area). Clay transfers
+poorly from its optical/multi-sensor pretraining to raw SAR backscatter. On this one
+real, consequential event, the decades-old (Otsu, 1979) classical threshold remains
+the most defensible method of the three.
 
 ### 4.4 Label efficiency: a real trend for one task, honest noise for the other (Phase P3)
 
@@ -319,8 +321,8 @@ an earlier table stand uncorrected.
 **The benchmark-to-event gap is real and large.** `eo-foundation-flood`'s Sen1Floods11
 numbers -- Prithvi full fine-tune 0.779, LoRA 0.778, frozen 0.699, and its own
 from-scratch U-Net baseline at 0.823, all water IoU at 100% labels, all via clean
-optical Sentinel-2 input -- are roughly 6-20x higher than what either foundation
-model achieved on our one real event (U-Net 0.130, Clay 0.040, both via SAR). Some of
+optical Sentinel-2 input -- are roughly 6-20x higher than what we measured on our
+one real event (U-Net 0.130, Clay 0.040, both via SAR). Some of
 this gap is expected and explicable, and we name every contributor we can rather than
 asserting one: Sen1Floods11 is a curated, hand-labeled, multi-event, multi-biome
 benchmark with far more and better-aligned training data than one small AOI's 30
@@ -333,8 +335,8 @@ optical benchmark chips a genuinely easier problem by construction, not just a l
 one. We cannot and do not claim to apportion the gap between these causes with the
 data we have. What we can say is the gap itself -- and not knowing its size without
 measuring it on a real local case -- is the practical risk a deployment decision
-maker faces: a benchmark number from a paper, even a very good one, is not a promise
-about one specific AOI's one specific event.
+maker faces: a benchmark number, even from a careful and well-run project, is not a
+promise about one specific AOI's one specific event.
 
 **Single-run comparisons are a real liability, not a theoretical one.** Section 4.5's
 correction is not a hypothetical cautionary tale -- it happened in this project's own
@@ -365,10 +367,11 @@ cover) and not real in another (Clay, same task) -- indistinguishable from each
 other without the seed check that caught the difference. On the real flood event,
 neither foundation model beat a decades-old classical threshold. None of the three
 models generalized to a nearby but untrained-on region. These are not criticisms of
-Prithvi or Clay as architectures -- both have real, strong, independently-published
-benchmark numbers on curated multi-event data that this paper's own event-scale
-numbers fall well short of, for reasons partly explicable by data quantity/quality and
-partly just the nature of one real small deployment. The practical conclusion is
+Prithvi or Clay as architectures -- Prithvi in particular has real, strong,
+independently-reported numbers on curated multi-event flood-segmentation data that
+this paper's own event-scale numbers fall well short of, for reasons partly
+explicable by data quantity/quality and partly just the nature of one real small
+deployment. The practical conclusion is
 narrower and, we think, more useful than either "foundation models always win" or
 "foundation models are overhyped": at the scale most real local deployments actually
 operate at, the only way to know which model wins on *your* AOI is to run the
