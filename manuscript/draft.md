@@ -1,32 +1,38 @@
 # What a Fair Comparison of Earth Observation Foundation Models Actually Looks Like on One Small, Real, Consequential Flood
 
 **Status:** Draft (Phase P5), 2026-10-03. Not yet submitted anywhere (Phase P6).
+Submission-ready `.docx` at `manuscript/manuscript.docx` (required format for the
+target venue -- PDF is not accepted). Target venue: **International Journal of
+Disaster Risk Reduction** (Elsevier, Scimago Q1, SJR 1.243) -- real topical fit for
+both halves of this paper, and, verified directly (not assumed), Bangladesh
+qualifies for Elsevier's full (100%) APC waiver as a Research4Life Group A country,
+making open-access publication here free. Solo authorship, no co-author sought.
 
 ## Abstract
 
-Earth observation (EO) foundation models are increasingly proposed as drop-in
-upgrades over task-specific CNNs for disaster response and land monitoring, but most
-evidence for this comes from large, curated, multi-event benchmarks. We ask a
-narrower, more operational question: on one small AOI, with the modest resources a
-single practitioner actually has, does a foundation model reliably beat a
-from-scratch U-Net? We fine-tune Prithvi-EO-2.0 (300M, full fine-tune) and Clay v1.5
-(frozen encoder, small trained head) against a from-scratch U-Net on a real Dhaka-area
-land-cover task and on a real 2026 Bangladesh monsoon flood (Dirai, Sunamganj), using
-each model's own documented recipe rather than a one-size-fits-all pipeline. Prithvi's
-advantage over the U-Net on land cover is real and survives a 3-seed check (all seeds
-agree in direction, water IoU +0.121 to +0.148). Clay's apparent advantage over the
-same U-Net, reported in an earlier single run, does not survive the same check (sign
-flips across seeds on both harder classes) -- a concrete illustration of why
-single-run foundation-model comparisons are unreliable even when the recipe is
-correct. On the real flood event, neither foundation model beats a decades-old
-classical Otsu threshold, and all three models fail to generalize at all to a
-third-party AOI 140km away, collapsing to the majority class. We report exact
-sample sizes (as few as 6-16 held-out tiles), do not claim statistical power we do not
-have, and are explicit that Prithvi's own reported Sen1Floods11 numbers (IoU
-0.70-0.78, from an in-progress, unpublished benchmarking project, via optical input)
-look nothing like what we measured on this one real SAR event (IoU 0.04-0.13) -- a
-real, measured gap between benchmark and deployment-scale
-evidence, not asserted from priors. Code, notebooks, and real run logs are public.
+Earth observation (EO) foundation models are proposed as drop-in upgrades over
+task-specific CNNs for disaster response and land monitoring, but most evidence comes
+from large, curated, multi-event benchmarks. We ask a narrower, operational question:
+at the scale a single practitioner actually has -- one small AOI, modest resources --
+does a foundation model reliably beat a from-scratch U-Net? We fine-tune
+Prithvi-EO-2.0 (300M, full fine-tune) and Clay v1.5 (frozen encoder, small head)
+against a from-scratch U-Net on a real Dhaka-area land-cover task and a real 2026
+Bangladesh monsoon flood (Dirai, Sunamganj), using each model's own documented
+recipe. Prithvi's advantage on land cover is real and survives a 3-seed check (water
+IoU +0.121 to +0.148, all seeds agreeing). Clay's apparent advantage over the same
+U-Net, from an earlier single run, does not survive the same check (sign flips on
+both harder classes) -- a concrete illustration that single-run foundation-model
+comparisons are unreliable even with a correct recipe. On the real flood event,
+neither foundation model beats a decades-old Otsu threshold, and all three models
+fail to generalize to a third-party AOI 140km away, collapsing to the majority class.
+We report exact sample sizes (6-16 held-out tiles), claim no statistical power we
+lack, and note that Prithvi's own reported Sen1Floods11 numbers (IoU 0.70-0.78, from
+an unpublished benchmarking project, via optical input) look nothing like what we
+measured on this one real SAR event (IoU 0.04-0.13) -- a measured gap between
+benchmark and deployment-scale evidence. Code, notebooks, and run logs are public.
+
+**Keywords:** Earth observation foundation models; flood mapping; generalization;
+reproducibility; Sentinel-1; Bangladesh
 
 ## 1. Introduction
 
