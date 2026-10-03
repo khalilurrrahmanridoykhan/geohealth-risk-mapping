@@ -1,11 +1,16 @@
 # What a Fair Comparison of Earth Observation Foundation Models Actually Looks Like on One Small, Real, Consequential Flood
 
-**Status:** Draft (Phase P5), 2026-10-03. Submission in progress on Editorial Manager
-(Phase P6). Target venue: **International Journal of Disaster Risk Reduction**
-(Elsevier, Scimago Q1, SJR 1.243) -- real topical fit for both halves of this paper,
-and, verified directly (not assumed), Bangladesh qualifies for Elsevier's full (100%)
-APC waiver as a Research4Life Group A country, making open-access publication here
-free. Solo authorship, no co-author sought.
+**Status:** SUBMITTED, 2026-10-03, to **International Journal of Disaster Risk
+Reduction** (Elsevier, Scimago Q1, SJR 1.243) via Editorial Manager, approved by the
+sole/corresponding author the same day. Solo authorship, no co-author sought.
+**The Research4Life APC waiver did not auto-apply** at submission (full USD 2,760
+shown, not free) -- likely because it's tied to a verified institution, not just
+country of residence, for an "Independent Researcher" affiliation; resolving this is
+deferred to acceptance (the charge only applies if accepted), not a submission
+blocker. Real friction hit and fixed live, not anticipated in the plan: this journal
+turned out to require double-blind review (only discovered at the file-upload step),
+and Editorial Manager auto-parsed the title page's affiliation line as three bogus
+co-authors, both caught and fixed before the submission completed.
 
 **This journal uses double-blind review**, discovered at the Editorial Manager
 upload step, not assumed in advance -- the single combined `manuscript.docx` built
