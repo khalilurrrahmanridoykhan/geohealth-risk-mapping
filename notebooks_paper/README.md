@@ -3,6 +3,12 @@
 Separate from the phased `notebooks/` (H0-H10). See the plan doc:
 `~/Documents/AIWORK/plan/Geospatial AI for Public Health — AI Paper Track (Phases P0–P6) — Plan.md`
 
+**Manuscript draft (Phase P5):** [`../manuscript/draft.md`](../manuscript/draft.md) --
+IMRaD write-up using only the real numbers from the notebooks below, with
+independently-verified related work (PANGAEA, GEO-Bench-2, REOBench,
+`eo-foundation-flood`, Bangladesh flood-risk literature). Zenodo archiving still
+pending.
+
 These notebooks are **GPU-dependent and built for Kaggle**, not this project's local
 CPU-only environment. Run on Kaggle (Settings > Accelerator > GPU, Internet > On),
 bring back the actual output/errors, and each gets fixed or confirmed from a real run
